@@ -1,0 +1,87 @@
+<USER_REQUEST>
+You are a Senior UiPath RPA Engineer and Python Backend Developer with 10+ years 
+of enterprise automation experience. You have full access to my AuraQA project 
+codebase. I need you to fix 3 critical issues to make this project 100% complete 
+and production-ready for a hackathon submission.
+
+Do NOT ask clarifying questions. Make all decisions yourself and implement 
+everything completely. Write real, working code — no mocks, no stubs, no 
+placeholders, no "TODO" comments.
+
+===================================================================
+CONTEXT: WHAT AURAQA IS
+===================================================================
+
+AuraQA is a self-healing test automation engine. When a UiPath test fails due 
+to a broken CSS/XPath selector, the system:
+
+1. Detects the failure (UiPath Test Cloud)
+2. Sends the failure payload to the Python/FastAPI backend
+3. LangGraph agent analyzes the DOM, generates healed selector candidates,
+   scores them by confidence (text match 35%, attribute overlap 25%, 
+   element depth 15%, tag congruency 15%, ID similarity 10%)
+4. If confidence >= 80: auto-heals and writes selector back
+5. If confidence < 80: escalates to Jira via Action Center
+6. Provisions synthetic test data via TDO
+7. Re-runs the healed test
+8. Logs full audit report to Jira
+
+The stack:
+- Backend: Python 3.10, FastAPI, LangGraph
+- Frontend: React 18, Vite, Tailwind CSS (mock app with 8 DOM mutation scenarios)
+- UiPath: Test Cloud, Coded Agents, Integration Service, Action Center
+- Infrastructure: Docker, nginx reverse proxy
+- Integrations: Jira Cloud REST API v3, UiPath TDO
+
+Current status:
+- Docker stack running: all 3 containers healthy (backend, mockapp, nginx)
+- Health endpoint: GET /api/health returns {"status":"healthy"}
+- POST /api/mutate returns 404 (mutations are client-side only — this is correct)
+- POST /api/heal returns validation errors when called with incomplete payload
+- LogToJira.xaml exists but is a STUB — only assigns a hardcoded mock Jira key,
+  makes no real HTTP call
+- Pro
+<truncated 4772 bytes>
+its GET /api/health and asserts {"status":"healthy"}
+3. Sends the complete POST /api/heal payload from Fix 3 above
+4. Parses the JSON response and checks:
+   - status is "healed" or "escalated" (both are valid)
+   - confidence is a number between 0 and 100
+   - healed_selector is not empty
+5. Prints a clear PASS or FAIL for each check
+6. At the end prints a summary: "AuraQA E2E Demo: X/4 checks passed"
+
+Use only bash, curl, and grep/jq — no Python.
+Make it colorized: green for PASS, red for FAIL.
+
+===================================================================
+DELIVERY REQUIREMENTS
+===================================================================
+
+For each fix, deliver:
+1. The complete file content — full file, not a diff, not a snippet
+2. The exact file path where it should be saved
+3. Any new environment variables needed (add to infrastructure/.env.example)
+4. Confirmation of what changed and why
+
+After all fixes, run these commands and show me the output:
+- docker-compose ps
+- curl -s http://localhost/api/health
+- bash scripts/test_e2e_demo.sh
+
+Do everything now. No questions. No partial work.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-27T18:51:32-04:00.
+
+The user's current state is as follows:
+Active Document: /Users/tamimorif/Documents/GitHub/AuraQA — Self-Healing Test Automation Engine/summaries.md (LANGUAGE_MARKDOWN)
+Cursor is on line: 1
+Other open documents:
+- /Users/tamimorif/Documents/GitHub/AuraQA — Self-Healing Test Automation Engine/summaries.md (LANGUAGE_MARKDOWN)
+Running terminal commands:
+- docker-compose up (in /Users/tamimorif/Documents/GitHub/AuraQA — Self-Healing Test Automation Engine/infrastructure, running for 2h2m23s)
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from Gemini 3.5 Flash (Medium) to Gemini 3.1 Pro (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>

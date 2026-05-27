@@ -1,4 +1,3 @@
-/// uipath/workflows/LogToJira.xaml
 <Activity mc:Ignorable="sap sap2010" x:Class="LogToJira" xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation" xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation" xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib" xmlns:ui="http://schemas.uipath.com/workflow/activities" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <x:Members>
     <x:Property Name="in_AuditLogJson" Type="InArgument(x:String)" />
@@ -32,14 +31,13 @@
       </scg:Dictionary>
     </sap:WorkflowViewStateService.ViewState>
     <ui:LogMessage DisplayName="Log Message" sap:VirtualizedContainerService.HintSize="338,103" sap2010:WorkflowViewState.IdRef="LogMessage_1" Level="Info" Message="[&quot;Creating Jira issue for audit log...&quot;]" />
-    <Assign DisplayName="Assign Mock Issue Key" sap:VirtualizedContainerService.HintSize="338,70" sap2010:WorkflowViewState.IdRef="Assign_1">
-      <Assign.To>
-        <OutArgument x:TypeArguments="x:String">[out_JiraIssueKey]</OutArgument>
-      </Assign.To>
-      <Assign.Value>
-        <InArgument x:TypeArguments="x:String">[in_JiraProjectKey + "-1001"]</InArgument>
-      </Assign.Value>
-    </Assign>
+    <ui:InvokeCode ContinueOnError="{x:Null}" Code="var baseUrl = Environment.GetEnvironmentVariable(&quot;AURAQA_JIRA_BASE_URL&quot;) ?? &quot;https://your-org.atlassian.net&quot;;&#xA;var email = Environment.GetEnvironmentVariable(&quot;AURAQA_JIRA_USER_EMAIL&quot;) ?? &quot;user@example.com&quot;;&#xA;var token = Environment.GetEnvironmentVariable(&quot;AURAQA_JIRA_API_TOKEN&quot;) ?? &quot;token&quot;;&#xA;var client = new System.Net.Http.HttpClient();&#xA;var auth = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(email + &quot;:&quot; + token));&#xA;client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(&quot;Basic&quot;, auth);&#xA;string safeJson = in_AuditLogJson.Replace(&quot;\&quot;&quot;, &quot;\\\&quot;&quot;).Replace(&quot;\r&quot;, &quot;&quot;).Replace(&quot;\n&quot;, &quot;\\n&quot;);&#xA;var content = new System.Net.Http.StringContent(&quot;{\&quot;fields\&quot;:{\&quot;project\&quot;:{\&quot;key\&quot;:\&quot;&quot; + in_JiraProjectKey + &quot;\&quot;},\&quot;summary\&quot;:\&quot;AuraQA Automation Failure\&quot;,\&quot;description\&quot;:{\&quot;type\&quot;:\&quot;doc\&quot;,\&quot;version\&quot;:1,\&quot;content\&quot;:[{\&quot;type\&quot;:\&quot;paragraph\&quot;,\&quot;content\&quot;:[{\&quot;type\&quot;:\&quot;text\&quot;,\&quot;text\&quot;:\&quot;&quot; + safeJson + &quot;\&quot;}]}]},\&quot;issuetype\&quot;:{\&quot;name\&quot;:\&quot;Bug\&quot;}}}&quot;, System.Text.Encoding.UTF8, &quot;application/json&quot;);&#xA;var response = client.PostAsync(baseUrl + &quot;/rest/api/3/issue&quot;, content).Result;&#xA;var responseString = response.Content.ReadAsStringAsync().Result;&#xA;var keyMatch = System.Text.RegularExpressions.Regex.Match(responseString, &quot;\&quot;key\&quot;:\&quot;([^\&quot;]+)\&quot;&quot;);&#xA;if(keyMatch.Success) {&#xA;    out_JiraIssueKey = keyMatch.Groups[1].Value;&#xA;} else {&#xA;    out_JiraIssueKey = &quot;AURA-ERROR&quot;;&#xA;    Console.WriteLine(&quot;Jira API Error: &quot; + responseString);&#xA;}" DisplayName="Invoke Code" sap:VirtualizedContainerService.HintSize="338,164" sap2010:WorkflowViewState.IdRef="InvokeCode_1" Language="CSharp">
+      <ui:InvokeCode.Arguments>
+        <InArgument x:TypeArguments="x:String" x:Key="in_AuditLogJson">[in_AuditLogJson]</InArgument>
+        <InArgument x:TypeArguments="x:String" x:Key="in_JiraProjectKey">[in_JiraProjectKey]</InArgument>
+        <OutArgument x:TypeArguments="x:String" x:Key="out_JiraIssueKey">[out_JiraIssueKey]</OutArgument>
+      </ui:InvokeCode.Arguments>
+    </ui:InvokeCode>
     <ui:LogMessage DisplayName="Log Message" sap:VirtualizedContainerService.HintSize="338,103" sap2010:WorkflowViewState.IdRef="LogMessage_2" Level="Info" Message="[&quot;Jira issue created successfully: &quot; + out_JiraIssueKey]" />
   </Sequence>
 </Activity>
