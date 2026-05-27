@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://auraqa.io/schemas/healed_response.json",
+  "title": "HealedSelectorResponse",
+  "description": "JSON Schema for the payload returned from Python to UiPath containing the healed selector.",
+  "type": "object",
+  "required": [
+    "test_case_id",
+    "original_selector",
+    "healed_selector",
+    "healed_selector_type",
+    "confidence",
+    "status"
+  ],
+  "properties": {
+    "test_case_id": {
+      "type": "string",
+      "description": "Original test case identifier"
+    },
+    "original_selector": {
+      "type": "string",
+      "description": "The broken selector that was submitted for healing"
+    },
+    "healed_selector": {
+      "type": "string",
+      "description": "New healed selector"
+    },
+    "healed_selector_type": {
+      "type": "string",
+      "enum": ["css", "xpath", "data-testid"],
+      "description": "Type of the healed selector"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Final confidence score (0-100)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "analyzing", "generating", "validating", "healed", "retrying", "escalated", "failed"],
+      "description": "Final healing status"
+    },
+    "candidates_evaluated": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of candidate selectors evaluated"
+    },
+    "top_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["selector", "selector_type", "confidence"],
+        "properties": {
+          "selector": { "type": "string" },
+          "selector_type": {
+            "type": "string",
+            "enum": ["css", "xpath", "data-testid"]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "matched_element": {
+            "type": ["object", "null"]
+          },
+          "scoring_breakdown": {
+            "type": "object",
+            "additionalProperties": { "type": "number" }
+          }
+        }
+      },
+      "description": "Top 3 candidate selectors considered"
+    },
+    "drift_type": {
+      "type": ["string", "null"],
+      "enum": [
+        "id_rename", "class_swap", "nesting_change",
+        "attribute_removal", "tag_change", "text_change",
+        "sibling_reorder", "compound_shift", null
+      ],
+      "description": "Detected type of selector drift"
+    },
+    "attempt_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of healing attempts made"
+    },
+    "execution_time_ms": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Total healing pipeline execution time in milliseconds"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp of the healing response"
+    },
+    "audit_log_id": {
+      "type": ["string", "null"],
+      "description": "Reference to the generated audit log entry"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,215 @@
+<!-- /// uipath/workflows/ApplyHealedSelector.xaml — Apply healed selector and re-run test step -->
+<Activity mc:Ignorable="sap sap2010 sads" x:Class="AuraQA.ApplyHealedSelector"
+  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+  xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+  xmlns:sads="http://schemas.microsoft.com/netfx/2010/xaml/activities/debugger"
+  xmlns:scg="clr-namespace:System.Collections.Generic;assembly=mscorlib"
+  xmlns:ui="http://schemas.uipath.com/workflow/activities"
+  xmlns:ua="http://schemas.uipath.com/workflow/activities/uiautomation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- Arguments -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <x:Members>
+    <x:Property Name="in_HealedSelector" Type="InArgument(x:String)" />
+    <x:Property Name="in_SelectorType" Type="InArgument(x:String)" />
+    <x:Property Name="in_TestCaseId" Type="InArgument(x:String)" />
+    <x:Property Name="out_RerunPassed" Type="OutArgument(x:Boolean)" />
+  </x:Members>
+
+  <Sequence DisplayName="ApplyHealedSelector Sequence" sap2010:WorkflowViewState.IdRef="ApplyHealedSelectorSequence_1">
+
+    <Sequence.Variables>
+      <Variable x:TypeArguments="x:String" Name="var_HealedSelector" />
+      <Variable x:TypeArguments="x:String" Name="var_SelectorType" />
+      <Variable x:TypeArguments="x:String" Name="var_TestCaseId" />
+      <Variable x:TypeArguments="x:Boolean" Name="var_RerunPassed" Default="False" />
+      <Variable x:TypeArguments="x:String" Name="var_UiPathSelectorXml" Default="" />
+      <Variable x:TypeArguments="x:Boolean" Name="var_ElementFound" Default="False" />
+      <Variable x:TypeArguments="x:Int32" Name="var_TimeoutMs" Default="30000" />
+    </Sequence.Variables>
+
+    <!-- Initialize from arguments -->
+    <Assign DisplayName="Set HealedSelector">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_HealedSelector]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_HealedSelector]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Set SelectorType">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_SelectorType]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_SelectorType]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Set TestCaseId">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_TestCaseId]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_TestCaseId]</InArgument></Assign.Value>
+    </Assign>
+
+    <ui:LogMessage DisplayName="Log ApplyHealedSelector Start" Level="Info"
+      Message="[String.Format(&quot;ApplyHealedSelector — TC: {0}, Type: {1}, Selector: {2}&quot;, var_TestCaseId, var_SelectorType, var_HealedSelector)]" />
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- STEP 1: Convert healed selector to UiPath selector XML -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <Switch x:TypeArguments="x:String" DisplayName="Build UiPath Selector by Type" Expression="[var_SelectorType]">
+
+      <Switch.Default>
+        <!-- Default: treat as CSS -->
+        <Assign DisplayName="Build CSS Selector XML">
+          <Assign.To><OutArgument x:TypeArguments="x:String">[var_UiPathSelectorXml]</OutArgument></Assign.To>
+          <Assign.Value><InArgument x:TypeArguments="x:String">[String.Format("&lt;html /&gt;&lt;webctrl css-selector='{0}' /&gt;", var_HealedSelector)]</InArgument></Assign.Value>
+        </Assign>
+      </Switch.Default>
+
+      <x:String x:Key="css">
+        <Assign DisplayName="Build CSS Selector XML">
+          <Assign.To><OutArgument x:TypeArguments="x:String">[var_UiPathSelectorXml]</OutArgument></Assign.To>
+          <Assign.Value><InArgument x:TypeArguments="x:String">[String.Format("&lt;html /&gt;&lt;webctrl css-selector='{0}' /&gt;", var_HealedSelector)]</InArgument></Assign.Value>
+        </Assign>
+      </x:String>
+
+      <x:String x:Key="xpath">
+        <Assign DisplayName="Build XPath Selector XML">
+          <Assign.To><OutArgument x:TypeArguments="x:String">[var_UiPathSelectorXml]</OutArgument></Assign.To>
+          <Assign.Value><InArgument x:TypeArguments="x:String">[String.Format("&lt;html /&gt;&lt;webctrl xpath='{0}' /&gt;", var_HealedSelector)]</InArgument></Assign.Value>
+        </Assign>
+      </x:String>
+
+      <x:String x:Key="data-testid">
+        <Assign DisplayName="Build data-testid Selector XML">
+          <Assign.To><OutArgument x:TypeArguments="x:String">[var_UiPathSelectorXml]</OutArgument></Assign.To>
+          <Assign.Value><InArgument x:TypeArguments="x:String">[String.Format("&lt;html /&gt;&lt;webctrl data-testid='{0}' /&gt;", var_HealedSelector)]</InArgument></Assign.Value>
+        </Assign>
+      </x:String>
+
+    </Switch>
+
+    <ui:LogMessage DisplayName="Log Built Selector" Level="Info"
+      Message="[String.Format(&quot;UiPath selector built: {0}&quot;, var_UiPathSelectorXml)]" />
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- STEP 2: Verify the healed selector finds the element -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <TryCatch DisplayName="Verify Healed Selector">
+      <TryCatch.Try>
+        <Sequence DisplayName="Element Verification">
+
+          <ua:ElementExists DisplayName="Check Healed Element Exists"
+            TimeoutMS="[var_TimeoutMs]"
+            xmlns:ua="http://schemas.uipath.com/workflow/activities/uiautomation">
+            <ua:ElementExists.Target>
+              <ua:Target>
+                <ua:Target.Selector>
+                  <ua:Selector Text="[var_UiPathSelectorXml]" />
+                </ua:Target.Selector>
+              </ua:Target>
+            </ua:ElementExists.Target>
+            <ua:ElementExists.Result>
+              <OutArgument x:TypeArguments="x:Boolean">[var_ElementFound]</OutArgument>
+            </ua:ElementExists.Result>
+          </ua:ElementExists>
+
+          <ui:LogMessage DisplayName="Log Element Check" Level="Info"
+            Message="[String.Format(&quot;Healed element found: {0}&quot;, var_ElementFound)]" />
+
+        </Sequence>
+      </TryCatch.Try>
+      <TryCatch.Catches>
+        <Catch x:TypeArguments="s:Exception" xmlns:s="clr-namespace:System;assembly=mscorlib">
+          <ActivityAction x:TypeArguments="s:Exception">
+            <ActivityAction.Argument>
+              <DelegateInArgument x:TypeArguments="s:Exception" Name="verifyException" />
+            </ActivityAction.Argument>
+            <Sequence DisplayName="Handle Verify Failure">
+              <Assign DisplayName="Set Element Not Found">
+                <Assign.To><OutArgument x:TypeArguments="x:Boolean">[var_ElementFound]</OutArgument></Assign.To>
+                <Assign.Value><InArgument x:TypeArguments="x:Boolean">[False]</InArgument></Assign.Value>
+              </Assign>
+              <ui:LogMessage DisplayName="Log Verify Error" Level="Warn"
+                Message="[String.Format(&quot;Healed selector verification failed — {0}&quot;, verifyException.Message)]" />
+            </Sequence>
+          </ActivityAction>
+        </Catch>
+      </TryCatch.Catches>
+    </TryCatch>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- STEP 3: Re-run the affected test step with healed selector -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <If DisplayName="Re-run If Element Found" Condition="[var_ElementFound]">
+      <If.Then>
+        <TryCatch DisplayName="Re-run Test Step">
+          <TryCatch.Try>
+            <Sequence DisplayName="Re-run Click with Healed Selector">
+
+              <ua:Click DisplayName="Click with Healed Selector"
+                ContinueOnError="False"
+                DelayAfter="500"
+                DelayBefore="200"
+                TimeoutMS="[var_TimeoutMs]"
+                xmlns:ua="http://schemas.uipath.com/workflow/activities/uiautomation">
+                <ua:Click.Target>
+                  <ua:Target>
+                    <ua:Target.Selector>
+                      <ua:Selector Text="[var_UiPathSelectorXml]" />
+                    </ua:Target.Selector>
+                  </ua:Target>
+                </ua:Click.Target>
+              </ua:Click>
+
+              <!-- Mark re-run as passed -->
+              <Assign DisplayName="Mark Rerun Passed">
+                <Assign.To><OutArgument x:TypeArguments="x:Boolean">[var_RerunPassed]</OutArgument></Assign.To>
+                <Assign.Value><InArgument x:TypeArguments="x:Boolean">[True]</InArgument></Assign.Value>
+              </Assign>
+
+              <ui:LogMessage DisplayName="Log Rerun Success" Level="Info"
+                Message="[String.Format(&quot;Re-run PASSED with healed selector — TC: {0}&quot;, var_TestCaseId)]" />
+
+            </Sequence>
+          </TryCatch.Try>
+          <TryCatch.Catches>
+            <Catch x:TypeArguments="s:Exception" xmlns:s="clr-namespace:System;assembly=mscorlib">
+              <ActivityAction x:TypeArguments="s:Exception">
+                <ActivityAction.Argument>
+                  <DelegateInArgument x:TypeArguments="s:Exception" Name="rerunException" />
+                </ActivityAction.Argument>
+                <Sequence DisplayName="Handle Rerun Failure">
+                  <Assign DisplayName="Mark Rerun Failed">
+                    <Assign.To><OutArgument x:TypeArguments="x:Boolean">[var_RerunPassed]</OutArgument></Assign.To>
+                    <Assign.Value><InArgument x:TypeArguments="x:Boolean">[False]</InArgument></Assign.Value>
+                  </Assign>
+                  <ui:LogMessage DisplayName="Log Rerun Failure" Level="Error"
+                    Message="[String.Format(&quot;Re-run FAILED with healed selector — TC: {0}, Error: {1}&quot;, var_TestCaseId, rerunException.Message)]" />
+                </Sequence>
+              </ActivityAction>
+            </Catch>
+          </TryCatch.Catches>
+        </TryCatch>
+      </If.Then>
+      <If.Else>
+        <Sequence DisplayName="Element Not Found — Skip Rerun">
+          <Assign DisplayName="Mark Rerun Failed (no element)">
+            <Assign.To><OutArgument x:TypeArguments="x:Boolean">[var_RerunPassed]</OutArgument></Assign.To>
+            <Assign.Value><InArgument x:TypeArguments="x:Boolean">[False]</InArgument></Assign.Value>
+          </Assign>
+          <ui:LogMessage DisplayName="Log Element Not Found" Level="Warn"
+            Message="[String.Format(&quot;Healed selector did not find element — TC: {0}. Skipping re-run.&quot;, var_TestCaseId)]" />
+        </Sequence>
+      </If.Else>
+    </If>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- Set output arguments -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <Assign DisplayName="Output RerunPassed">
+      <Assign.To><OutArgument x:TypeArguments="x:Boolean">[out_RerunPassed]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:Boolean">[var_RerunPassed]</InArgument></Assign.Value>
+    </Assign>
+
+    <ui:LogMessage DisplayName="Log ApplyHealedSelector End" Level="Info"
+      Message="[String.Format(&quot;ApplyHealedSelector completed — TC: {0}, Rerun Passed: {1}&quot;, var_TestCaseId, var_RerunPassed)]" />
+
+  </Sequence>
+</Activity>

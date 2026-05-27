@@ -1,0 +1,80 @@
+{
+  "$comment": "/// uipath/integration/tdo_connector.json — Test Data Orchestrator connector configuration for AuraQA",
+  "connectorId": "auraqa-tdo-connector",
+  "connectorName": "AuraQA TDO Connector",
+  "connectorType": "RestApi",
+  "version": "1.0.0",
+  "connection": {
+    "type": "RestApi",
+    "baseUrl": "${TDO_API_BASE_URL}",
+    "defaultEndpoint": "/api/v1/datasets",
+    "authMethod": "BearerToken",
+    "auth": {
+      "tokenUrl": "${TDO_AUTH_TOKEN_URL}",
+      "clientId": "${TDO_CLIENT_ID}",
+      "clientSecret": "${TDO_CLIENT_SECRET}",
+      "scope": "datasets:read datasets:write records:read",
+      "bearerToken": "${TDO_BEARER_TOKEN}"
+    },
+    "headers": {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "X-AuraQA-Source": "uipath-automation"
+    }
+  },
+  "defaults": {
+    "datasetName": "auraqa_default_dataset",
+    "recordCount": 10,
+    "environment": "staging",
+    "format": "json",
+    "randomSeed": null,
+    "locale": "en-US"
+  },
+  "endpoints": {
+    "listDatasets": {
+      "method": "GET",
+      "path": "/api/v1/datasets",
+      "description": "List all available datasets"
+    },
+    "getDataset": {
+      "method": "GET",
+      "path": "/api/v1/datasets/{datasetName}",
+      "description": "Get dataset metadata and schema"
+    },
+    "provisionRecords": {
+      "method": "POST",
+      "path": "/api/v1/datasets/{datasetName}/provision",
+      "description": "Provision N records from the specified dataset",
+      "requestBody": {
+        "record_count": "{recordCount}",
+        "environment": "{environment}",
+        "filters": {},
+        "random_seed": null,
+        "test_case_id": "{testCaseId}"
+      }
+    },
+    "releaseRecords": {
+      "method": "POST",
+      "path": "/api/v1/datasets/{datasetName}/release",
+      "description": "Release provisioned records after test completion",
+      "requestBody": {
+        "record_ids": [],
+        "test_case_id": "{testCaseId}"
+      }
+    }
+  },
+  "dataMapping": {
+    "responseRoot": "data",
+    "recordIdField": "record_id",
+    "statusField": "provision_status",
+    "timestampField": "provisioned_at"
+  },
+  "retryPolicy": {
+    "maxRetries": 3,
+    "backoffMs": 500,
+    "backoffMultiplier": 2.0
+  },
+  "rateLimiting": {
+    "maxRequestsPerMinute": 60
+  }
+}

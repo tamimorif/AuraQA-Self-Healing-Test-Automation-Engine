@@ -1,0 +1,80 @@
+{
+  "$comment": "/// uipath/integration/jira_connector.json — Jira Integration Service configuration for AuraQA",
+  "connectorId": "auraqa-jira-connector",
+  "connectorName": "AuraQA Jira Connector",
+  "connectorType": "JiraCloud",
+  "version": "1.0.0",
+  "connection": {
+    "type": "CloudOAuth2",
+    "baseUrl": "https://your-domain.atlassian.net",
+    "authMethod": "OAuth2",
+    "oauth2": {
+      "authorizationUrl": "https://auth.atlassian.com/authorize",
+      "tokenUrl": "https://auth.atlassian.com/oauth/token",
+      "scopes": [
+        "read:jira-work",
+        "write:jira-work",
+        "read:jira-user"
+      ],
+      "clientId": "${JIRA_OAUTH_CLIENT_ID}",
+      "clientSecret": "${JIRA_OAUTH_CLIENT_SECRET}",
+      "redirectUri": "https://cloud.uipath.com/integrationservice/callback"
+    },
+    "fallbackAuth": {
+      "type": "ApiToken",
+      "username": "${JIRA_USERNAME}",
+      "apiToken": "${JIRA_API_TOKEN}"
+    }
+  },
+  "defaults": {
+    "projectKey": "AURAQA",
+    "issueType": "Bug",
+    "priority": "High",
+    "labels": ["auraqa", "self-healing", "automation"],
+    "assignee": null,
+    "reporter": null,
+    "components": ["Test Automation"]
+  },
+  "fieldMappings": {
+    "summary": {
+      "template": "[AuraQA] Selector Healing — {{status}} — TC {{test_case_id}}",
+      "sourceFields": ["status", "test_case_id"]
+    },
+    "description": {
+      "template": "h2. AuraQA Self-Healing Audit Log\n\n*Audit ID:* {{audit_id}}\n*Test Case:* {{test_case_id}}\n*Test Suite:* {{test_suite_id}}\n*Environment:* {{environment}}\n*Page URL:* {{page_url}}\n\nh3. Selector Details\n*Original Selector:* {{original_selector}}\n*Healed Selector:* {{healed_selector}}\n*Confidence:* {{confidence}}%\n*Drift Type:* {{drift_type}}\n\nh3. Execution\n*Status:* {{status}}\n*Attempts:* {{attempt_count}}\n*Execution Time:* {{execution_time_ms}}ms\n\nh3. Error\n{code}{{error_message}}{code}\n\n*Timestamp:* {{timestamp}}",
+      "sourceFields": [
+        "audit_id", "test_case_id", "test_suite_id", "environment",
+        "page_url", "original_selector", "healed_selector", "confidence",
+        "drift_type", "status", "attempt_count", "execution_time_ms",
+        "error_message", "timestamp"
+      ]
+    },
+    "priority": {
+      "mapping": {
+        "Critical": "Critical",
+        "High": "High",
+        "Medium": "Medium",
+        "Low": "Low"
+      },
+      "sourceField": "jira_priority",
+      "default": "High"
+    },
+    "labels": {
+      "static": ["auraqa", "self-healing"],
+      "dynamic": ["drift_type", "status"]
+    }
+  },
+  "webhooks": {
+    "enabled": false,
+    "callbackUrl": null,
+    "events": ["issue_created", "issue_updated"]
+  },
+  "retryPolicy": {
+    "maxRetries": 3,
+    "backoffMs": 1000,
+    "backoffMultiplier": 2.0
+  },
+  "rateLimiting": {
+    "maxRequestsPerMinute": 30
+  }
+}

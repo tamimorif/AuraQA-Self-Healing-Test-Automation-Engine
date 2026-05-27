@@ -1,0 +1,252 @@
+<!-- /// uipath/workflows/Main.xaml — AuraQA Master Orchestrator Workflow -->
+<Activity mc:Ignorable="sap sap2010 sads" x:Class="AuraQA.Main"
+  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+  xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+  xmlns:sads="http://schemas.microsoft.com/netfx/2010/xaml/activities/debugger"
+  xmlns:scg="clr-namespace:System.Collections.Generic;assembly=mscorlib"
+  xmlns:ui="http://schemas.uipath.com/workflow/activities"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <x:Members>
+    <x:Property Name="in_TestCaseId" Type="InArgument(x:String)" />
+    <x:Property Name="in_TestSuiteId" Type="InArgument(x:String)" />
+    <x:Property Name="in_TargetUrl" Type="InArgument(x:String)" />
+    <x:Property Name="in_HealingApiEndpoint" Type="InArgument(x:String)" />
+    <x:Property Name="in_JiraProjectKey" Type="InArgument(x:String)" />
+  </x:Members>
+
+  <Sequence DisplayName="AuraQA Main Orchestrator" sap2010:WorkflowViewState.IdRef="MainSequence_1">
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <!-- Variable declarations -->
+    <!-- ════════════════════════════════════════════════════ -->
+    <Sequence.Variables>
+      <Variable x:TypeArguments="x:String" Name="var_TestCaseId" />
+      <Variable x:TypeArguments="x:String" Name="var_TestSuiteId" />
+      <Variable x:TypeArguments="x:String" Name="var_TargetUrl" />
+      <Variable x:TypeArguments="x:String" Name="var_HealingApiEndpoint" />
+      <Variable x:TypeArguments="x:String" Name="var_JiraProjectKey" />
+      <Variable x:TypeArguments="x:Boolean" Name="var_TestPassed" Default="False" />
+      <Variable x:TypeArguments="x:String" Name="var_ErrorMessage" />
+      <Variable x:TypeArguments="x:String" Name="var_DOMSnapshot" />
+      <Variable x:TypeArguments="x:String" Name="var_FailurePayloadJson" />
+      <Variable x:TypeArguments="x:String" Name="var_HealedSelectorJson" />
+      <Variable x:TypeArguments="x:String" Name="var_HealingStatus" />
+      <Variable x:TypeArguments="x:Double" Name="var_Confidence" Default="0" />
+      <Variable x:TypeArguments="x:Boolean" Name="var_RerunPassed" Default="False" />
+      <Variable x:TypeArguments="x:String" Name="var_AuditLogJson" />
+      <Variable x:TypeArguments="x:String" Name="var_JiraIssueKey" />
+      <Variable x:TypeArguments="x:String" Name="var_HealedSelector" />
+      <Variable x:TypeArguments="x:String" Name="var_SelectorType" />
+    </Sequence.Variables>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <!-- Initialize arguments into local variables -->
+    <!-- ════════════════════════════════════════════════════ -->
+    <Assign DisplayName="Initialize TestCaseId">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_TestCaseId]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_TestCaseId]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Initialize TestSuiteId">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_TestSuiteId]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_TestSuiteId]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Initialize TargetUrl">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_TargetUrl]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_TargetUrl]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Initialize HealingApiEndpoint">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_HealingApiEndpoint]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_HealingApiEndpoint]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Initialize JiraProjectKey">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_JiraProjectKey]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_JiraProjectKey]</InArgument></Assign.Value>
+    </Assign>
+
+    <ui:LogMessage DisplayName="Log Pipeline Start" Level="Info"
+      Message="[String.Format(&quot;AuraQA Pipeline started — TC: {0}, Suite: {1}, URL: {2}&quot;, var_TestCaseId, var_TestSuiteId, var_TargetUrl)]" />
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <!-- Master Try-Catch: Full healing pipeline -->
+    <!-- ════════════════════════════════════════════════════ -->
+    <TryCatch DisplayName="Master Pipeline Try-Catch">
+      <TryCatch.Try>
+        <Sequence DisplayName="Healing Pipeline Sequence">
+
+          <!-- ──────────────────────────────────────────── -->
+          <!-- STEP 1: Run the test case -->
+          <!-- ──────────────────────────────────────────── -->
+          <ui:InvokeWorkflowFile DisplayName="Step 1 — RunTest"
+            WorkflowFileName="workflows/RunTest.xaml"
+            ContinueOnError="False">
+            <ui:InvokeWorkflowFile.Arguments>
+              <InArgument x:TypeArguments="x:String" x:Key="in_TestCaseId">[var_TestCaseId]</InArgument>
+              <InArgument x:TypeArguments="x:String" x:Key="in_TestSuiteId">[var_TestSuiteId]</InArgument>
+              <InArgument x:TypeArguments="x:String" x:Key="in_TargetUrl">[var_TargetUrl]</InArgument>
+              <OutArgument x:TypeArguments="x:Boolean" x:Key="out_TestPassed">[var_TestPassed]</OutArgument>
+              <OutArgument x:TypeArguments="x:String" x:Key="out_ErrorMessage">[var_ErrorMessage]</OutArgument>
+              <OutArgument x:TypeArguments="x:String" x:Key="out_DOMSnapshot">[var_DOMSnapshot]</OutArgument>
+            </ui:InvokeWorkflowFile.Arguments>
+          </ui:InvokeWorkflowFile>
+
+          <ui:LogMessage DisplayName="Log RunTest Result" Level="Info"
+            Message="[String.Format(&quot;RunTest completed — Passed: {0}&quot;, var_TestPassed)]" />
+
+          <!-- ──────────────────────────────────────────── -->
+          <!-- STEP 2: If test failed, detect failure details -->
+          <!-- ──────────────────────────────────────────── -->
+          <If DisplayName="Check If Test Failed" Condition="[Not var_TestPassed]">
+            <If.Then>
+              <Sequence DisplayName="Failure Handling Sequence">
+
+                <ui:LogMessage DisplayName="Log Failure Detected" Level="Warn"
+                  Message="[String.Format(&quot;Test FAILED — TC: {0}, Error: {1}&quot;, var_TestCaseId, var_ErrorMessage)]" />
+
+                <!-- DetectFailure -->
+                <ui:InvokeWorkflowFile DisplayName="Step 2 — DetectFailure"
+                  WorkflowFileName="workflows/DetectFailure.xaml"
+                  ContinueOnError="False">
+                  <ui:InvokeWorkflowFile.Arguments>
+                    <InArgument x:TypeArguments="x:String" x:Key="in_ErrorMessage">[var_ErrorMessage]</InArgument>
+                    <InArgument x:TypeArguments="x:String" x:Key="in_TargetUrl">[var_TargetUrl]</InArgument>
+                    <InArgument x:TypeArguments="x:String" x:Key="in_TestCaseId">[var_TestCaseId]</InArgument>
+                    <InArgument x:TypeArguments="x:String" x:Key="in_TestSuiteId">[var_TestSuiteId]</InArgument>
+                    <InArgument x:TypeArguments="x:String" x:Key="in_DOMSnapshot">[var_DOMSnapshot]</InArgument>
+                    <OutArgument x:TypeArguments="x:String" x:Key="out_FailurePayloadJson">[var_FailurePayloadJson]</OutArgument>
+                  </ui:InvokeWorkflowFile.Arguments>
+                </ui:InvokeWorkflowFile>
+
+                <ui:LogMessage DisplayName="Log Failure Payload Built" Level="Info"
+                  Message="DetectFailure completed — Payload assembled." />
+
+                <!-- ──────────────────────────────────────── -->
+                <!-- STEP 3: Invoke the Python healing agent -->
+                <!-- ──────────────────────────────────────── -->
+                <ui:InvokeWorkflowFile DisplayName="Step 3 — InvokeHealingAgent"
+                  WorkflowFileName="workflows/InvokeHealingAgent.xaml"
+                  ContinueOnError="False">
+                  <ui:InvokeWorkflowFile.Arguments>
+                    <InArgument x:TypeArguments="x:String" x:Key="in_FailurePayloadJson">[var_FailurePayloadJson]</InArgument>
+                    <InArgument x:TypeArguments="x:String" x:Key="in_ApiEndpoint">[var_HealingApiEndpoint]</InArgument>
+                    <OutArgument x:TypeArguments="x:String" x:Key="out_HealedSelectorJson">[var_HealedSelectorJson]</OutArgument>
+                    <OutArgument x:TypeArguments="x:String" x:Key="out_HealingStatus">[var_HealingStatus]</OutArgument>
+                    <OutArgument x:TypeArguments="x:Double" x:Key="out_Confidence">[var_Confidence]</OutArgument>
+                  </ui:InvokeWorkflowFile.Arguments>
+                </ui:InvokeWorkflowFile>
+
+                <ui:LogMessage DisplayName="Log Healing Result" Level="Info"
+                  Message="[String.Format(&quot;Healing API returned — Status: {0}, Confidence: {1:F1}%&quot;, var_HealingStatus, var_Confidence)]" />
+
+                <!-- ──────────────────────────────────────── -->
+                <!-- STEP 4: Apply healed selector (if healed) -->
+                <!-- ──────────────────────────────────────── -->
+                <If DisplayName="Check If Healing Succeeded" Condition="[var_HealingStatus = &quot;healed&quot;]">
+                  <If.Then>
+                    <Sequence DisplayName="Apply Healed Selector Sequence">
+
+                      <ui:InvokeWorkflowFile DisplayName="Step 4 — ApplyHealedSelector"
+                        WorkflowFileName="workflows/ApplyHealedSelector.xaml"
+                        ContinueOnError="False">
+                        <ui:InvokeWorkflowFile.Arguments>
+                          <InArgument x:TypeArguments="x:String" x:Key="in_HealedSelector">[var_HealedSelector]</InArgument>
+                          <InArgument x:TypeArguments="x:String" x:Key="in_SelectorType">[var_SelectorType]</InArgument>
+                          <InArgument x:TypeArguments="x:String" x:Key="in_TestCaseId">[var_TestCaseId]</InArgument>
+                          <OutArgument x:TypeArguments="x:Boolean" x:Key="out_RerunPassed">[var_RerunPassed]</OutArgument>
+                        </ui:InvokeWorkflowFile.Arguments>
+                      </ui:InvokeWorkflowFile>
+
+                      <ui:LogMessage DisplayName="Log Apply Result" Level="Info"
+                        Message="[String.Format(&quot;Healed selector applied — Rerun Passed: {0}&quot;, var_RerunPassed)]" />
+
+                    </Sequence>
+                  </If.Then>
+                  <If.Else>
+                    <Sequence DisplayName="Healing Not Successful">
+                      <ui:LogMessage DisplayName="Log Healing Escalated" Level="Warn"
+                        Message="[String.Format(&quot;Healing was not successful — Status: {0}. Escalating to Jira.&quot;, var_HealingStatus)]" />
+                    </Sequence>
+                  </If.Else>
+                </If>
+
+                <!-- ──────────────────────────────────────── -->
+                <!-- STEP 5: Log audit trail to Jira -->
+                <!-- ──────────────────────────────────────── -->
+                <ui:InvokeWorkflowFile DisplayName="Step 5 — LogToJira"
+                  WorkflowFileName="workflows/LogToJira.xaml"
+                  ContinueOnError="True">
+                  <ui:InvokeWorkflowFile.Arguments>
+                    <InArgument x:TypeArguments="x:String" x:Key="in_AuditLogJson">[var_AuditLogJson]</InArgument>
+                    <InArgument x:TypeArguments="x:String" x:Key="in_JiraProjectKey">[var_JiraProjectKey]</InArgument>
+                    <OutArgument x:TypeArguments="x:String" x:Key="out_JiraIssueKey">[var_JiraIssueKey]</OutArgument>
+                  </ui:InvokeWorkflowFile.Arguments>
+                </ui:InvokeWorkflowFile>
+
+                <ui:LogMessage DisplayName="Log Jira Result" Level="Info"
+                  Message="[String.Format(&quot;Jira issue created: {0}&quot;, var_JiraIssueKey)]" />
+
+              </Sequence>
+            </If.Then>
+            <If.Else>
+              <Sequence DisplayName="Test Passed — No Healing Needed">
+                <ui:LogMessage DisplayName="Log Test Passed" Level="Info"
+                  Message="[String.Format(&quot;Test PASSED — TC: {0}. No healing needed.&quot;, var_TestCaseId)]" />
+              </Sequence>
+            </If.Else>
+          </If>
+
+        </Sequence>
+      </TryCatch.Try>
+
+      <TryCatch.Catches>
+        <Catch x:TypeArguments="s:Exception" xmlns:s="clr-namespace:System;assembly=mscorlib">
+          <ActivityAction x:TypeArguments="s:Exception">
+            <ActivityAction.Argument>
+              <DelegateInArgument x:TypeArguments="s:Exception" Name="pipelineException" />
+            </ActivityAction.Argument>
+            <Sequence DisplayName="Handle Pipeline Exception">
+              <ui:LogMessage DisplayName="Log Pipeline Exception" Level="Error"
+                Message="[String.Format(&quot;AuraQA Pipeline EXCEPTION — TC: {0}, Error: {1}&quot;, var_TestCaseId, pipelineException.Message)]" />
+
+              <!-- Attempt to log the failure to Jira even on exception -->
+              <TryCatch DisplayName="Emergency Jira Logging">
+                <TryCatch.Try>
+                  <ui:InvokeWorkflowFile DisplayName="Emergency LogToJira"
+                    WorkflowFileName="workflows/LogToJira.xaml"
+                    ContinueOnError="True">
+                    <ui:InvokeWorkflowFile.Arguments>
+                      <InArgument x:TypeArguments="x:String" x:Key="in_AuditLogJson">[String.Format("{""audit_id"":""emergency"",""test_case_id"":""{0}"",""test_suite_id"":""{1}"",""original_selector"":""N/A"",""status"":""failed"",""error_message"":""{2}""}", var_TestCaseId, var_TestSuiteId, pipelineException.Message)]</InArgument>
+                      <InArgument x:TypeArguments="x:String" x:Key="in_JiraProjectKey">[var_JiraProjectKey]</InArgument>
+                      <OutArgument x:TypeArguments="x:String" x:Key="out_JiraIssueKey">[var_JiraIssueKey]</OutArgument>
+                    </ui:InvokeWorkflowFile.Arguments>
+                  </ui:InvokeWorkflowFile>
+                </TryCatch.Try>
+                <TryCatch.Catches>
+                  <Catch x:TypeArguments="s:Exception">
+                    <ActivityAction x:TypeArguments="s:Exception">
+                      <ActivityAction.Argument>
+                        <DelegateInArgument x:TypeArguments="s:Exception" Name="jiraException" />
+                      </ActivityAction.Argument>
+                      <ui:LogMessage DisplayName="Log Jira Emergency Failure" Level="Fatal"
+                        Message="[String.Format(&quot;CRITICAL: Emergency Jira logging also failed — {0}&quot;, jiraException.Message)]" />
+                    </ActivityAction>
+                  </Catch>
+                </TryCatch.Catches>
+              </TryCatch>
+
+              <Rethrow DisplayName="Rethrow Pipeline Exception" />
+            </Sequence>
+          </ActivityAction>
+        </Catch>
+      </TryCatch.Catches>
+
+      <TryCatch.Finally>
+        <ui:LogMessage DisplayName="Log Pipeline Complete" Level="Info"
+          Message="[String.Format(&quot;AuraQA Pipeline finished — TC: {0}, Jira: {1}&quot;, var_TestCaseId, If(String.IsNullOrEmpty(var_JiraIssueKey), &quot;N/A&quot;, var_JiraIssueKey))]" />
+      </TryCatch.Finally>
+    </TryCatch>
+
+  </Sequence>
+</Activity>

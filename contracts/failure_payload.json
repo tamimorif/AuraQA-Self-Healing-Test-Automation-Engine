@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://auraqa.io/schemas/failure_payload.json",
+  "title": "TestFailurePayload",
+  "description": "JSON Schema for the payload sent from UiPath to Python upon a test failure.",
+  "type": "object",
+  "required": [
+    "test_case_id",
+    "test_suite_id",
+    "broken_selector",
+    "selector_type",
+    "dom_snapshot",
+    "original_element_attributes",
+    "page_url"
+  ],
+  "properties": {
+    "test_case_id": {
+      "type": "string",
+      "description": "Unique test case identifier",
+      "minLength": 1
+    },
+    "test_suite_id": {
+      "type": "string",
+      "description": "Parent test suite identifier",
+      "minLength": 1
+    },
+    "broken_selector": {
+      "type": "string",
+      "description": "CSS/XPath selector that failed to locate the element",
+      "minLength": 1
+    },
+    "selector_type": {
+      "type": "string",
+      "enum": ["css", "xpath", "data-testid"],
+      "description": "Type of the broken selector"
+    },
+    "dom_snapshot": {
+      "type": "string",
+      "description": "Complete HTML of the page at the time of failure",
+      "minLength": 1
+    },
+    "original_element_attributes": {
+      "type": "object",
+      "description": "Known attributes of the element the selector originally matched",
+      "required": ["tag"],
+      "properties": {
+        "tag": {
+          "type": "string",
+          "description": "Original HTML tag name"
+        },
+        "element_id": {
+          "type": ["string", "null"],
+          "description": "Original ID attribute"
+        },
+        "classes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Original CSS class list"
+        },
+        "text": {
+          "type": "string",
+          "description": "Original inner text content"
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "All original HTML attributes"
+        },
+        "data_testid": {
+          "type": ["string", "null"],
+          "description": "Original data-testid attribute"
+        },
+        "depth": {
+          "type": ["integer", "null"],
+          "description": "Original nesting depth"
+        },
+        "parent_tag": {
+          "type": ["string", "null"],
+          "description": "Original parent element tag"
+        }
+      }
+    },
+    "page_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL of the page under test"
+    },
+    "screenshot_base64": {
+      "type": ["string", "null"],
+      "description": "Base64-encoded screenshot at failure time"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "UiPath error message on failure",
+      "default": ""
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp of the failure"
+    },
+    "environment": {
+      "type": "string",
+      "description": "Execution environment identifier",
+      "default": "staging"
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of prior healing attempts",
+      "default": 0
+    }
+  },
+  "additionalProperties": false
+}

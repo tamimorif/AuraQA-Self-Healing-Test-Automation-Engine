@@ -1,0 +1,1 @@
+"""AuraQA configuration module."""

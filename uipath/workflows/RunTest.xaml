@@ -1,0 +1,260 @@
+<!-- /// uipath/workflows/RunTest.xaml — Execute a test case against the target URL -->
+<Activity mc:Ignorable="sap sap2010 sads" x:Class="AuraQA.RunTest"
+  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+  xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+  xmlns:sads="http://schemas.microsoft.com/netfx/2010/xaml/activities/debugger"
+  xmlns:scg="clr-namespace:System.Collections.Generic;assembly=mscorlib"
+  xmlns:ui="http://schemas.uipath.com/workflow/activities"
+  xmlns:ua="http://schemas.uipath.com/workflow/activities/uiautomation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- Arguments -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <x:Members>
+    <x:Property Name="in_TestCaseId" Type="InArgument(x:String)" />
+    <x:Property Name="in_TestSuiteId" Type="InArgument(x:String)" />
+    <x:Property Name="in_TargetUrl" Type="InArgument(x:String)" />
+    <x:Property Name="out_TestPassed" Type="OutArgument(x:Boolean)" />
+    <x:Property Name="out_ErrorMessage" Type="OutArgument(x:String)" />
+    <x:Property Name="out_DOMSnapshot" Type="OutArgument(x:String)" />
+  </x:Members>
+
+  <Sequence DisplayName="RunTest Sequence" sap2010:WorkflowViewState.IdRef="RunTestSequence_1">
+
+    <Sequence.Variables>
+      <Variable x:TypeArguments="x:String" Name="var_TestCaseId" />
+      <Variable x:TypeArguments="x:String" Name="var_TestSuiteId" />
+      <Variable x:TypeArguments="x:String" Name="var_TargetUrl" />
+      <Variable x:TypeArguments="x:Boolean" Name="var_TestPassed" Default="False" />
+      <Variable x:TypeArguments="x:String" Name="var_ErrorMessage" Default="" />
+      <Variable x:TypeArguments="x:String" Name="var_DOMSnapshot" Default="" />
+      <Variable x:TypeArguments="x:String" Name="var_BrowserType" Default="Chrome" />
+      <Variable x:TypeArguments="x:Int32" Name="var_TimeoutSeconds" Default="30" />
+      <Variable x:TypeArguments="ua:Browser" Name="var_Browser"
+        xmlns:ua="http://schemas.uipath.com/workflow/activities/uiautomation" />
+      <Variable x:TypeArguments="x:String" Name="var_PageSource" Default="" />
+    </Sequence.Variables>
+
+    <!-- Initialize local variables from arguments -->
+    <Assign DisplayName="Set TestCaseId">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_TestCaseId]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_TestCaseId]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Set TestSuiteId">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_TestSuiteId]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_TestSuiteId]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Set TargetUrl">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_TargetUrl]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_TargetUrl]</InArgument></Assign.Value>
+    </Assign>
+
+    <ui:LogMessage DisplayName="Log RunTest Start" Level="Info"
+      Message="[String.Format(&quot;RunTest started — TC: {0}, Suite: {1}, URL: {2}&quot;, var_TestCaseId, var_TestSuiteId, var_TargetUrl)]" />
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- Main test execution inside Try-Catch -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <TryCatch DisplayName="Test Execution Try-Catch">
+      <TryCatch.Try>
+        <Sequence DisplayName="Execute Test Steps">
+
+          <!-- STEP 1: Open Browser -->
+          <ua:OpenBrowser DisplayName="Open Browser"
+            BrowserType="[ua:BrowserType.Chrome]"
+            Url="[var_TargetUrl]"
+            Hidden="False"
+            NewSession="True"
+            ContinueOnError="False"
+            xmlns:ua="http://schemas.uipath.com/workflow/activities/uiautomation">
+            <ua:OpenBrowser.Body>
+              <Sequence DisplayName="Browser Actions">
+
+                <!-- STEP 2: Wait for page load -->
+                <Delay DisplayName="Wait for page load" Duration="[TimeSpan.FromSeconds(3)]" />
+
+                <!-- STEP 3: Execute test step — Click action -->
+                <TryCatch DisplayName="Test Step: Click Target Element">
+                  <TryCatch.Try>
+                    <ua:Click DisplayName="Click Target Element"
+                      ContinueOnError="False"
+                      DelayAfter="500"
+                      DelayBefore="200"
+                      TimeoutMS="[var_TimeoutSeconds * 1000]"
+                      xmlns:ua="http://schemas.uipath.com/workflow/activities/uiautomation">
+                      <ua:Click.Target>
+                        <ua:Target>
+                          <ua:Target.Selector>
+                            <ua:Selector Text="&lt;html /&gt;&lt;webctrl tag='button' data-testid='submit-btn' /&gt;" />
+                          </ua:Target.Selector>
+                        </ua:Target>
+                      </ua:Click.Target>
+                    </ua:Click>
+                  </TryCatch.Try>
+                  <TryCatch.Catches>
+                    <Catch x:TypeArguments="s:Exception" xmlns:s="clr-namespace:System;assembly=mscorlib">
+                      <ActivityAction x:TypeArguments="s:Exception">
+                        <ActivityAction.Argument>
+                          <DelegateInArgument x:TypeArguments="s:Exception" Name="clickException" />
+                        </ActivityAction.Argument>
+                        <Sequence DisplayName="Handle Click Failure">
+                          <Assign DisplayName="Record Click Error">
+                            <Assign.To><OutArgument x:TypeArguments="x:String">[var_ErrorMessage]</OutArgument></Assign.To>
+                            <Assign.Value><InArgument x:TypeArguments="x:String">[String.Format("Click failed on target element — {0}", clickException.Message)]</InArgument></Assign.Value>
+                          </Assign>
+                          <Throw DisplayName="Rethrow Click Error" Exception="[clickException]" />
+                        </Sequence>
+                      </ActivityAction>
+                    </Catch>
+                  </TryCatch.Catches>
+                </TryCatch>
+
+                <!-- STEP 4: Execute test step — Type into input field -->
+                <TryCatch DisplayName="Test Step: Type Into Input">
+                  <TryCatch.Try>
+                    <ua:TypeInto DisplayName="Type Into Input Field"
+                      Text="test-input-value"
+                      ContinueOnError="False"
+                      DelayAfter="300"
+                      DelayBefore="200"
+                      TimeoutMS="[var_TimeoutSeconds * 1000]"
+                      xmlns:ua="http://schemas.uipath.com/workflow/activities/uiautomation">
+                      <ua:TypeInto.Target>
+                        <ua:Target>
+                          <ua:Target.Selector>
+                            <ua:Selector Text="&lt;html /&gt;&lt;webctrl tag='input' data-testid='search-input' /&gt;" />
+                          </ua:Target.Selector>
+                        </ua:Target>
+                      </ua:TypeInto.Target>
+                    </ua:TypeInto>
+                  </TryCatch.Try>
+                  <TryCatch.Catches>
+                    <Catch x:TypeArguments="s:Exception" xmlns:s="clr-namespace:System;assembly=mscorlib">
+                      <ActivityAction x:TypeArguments="s:Exception">
+                        <ActivityAction.Argument>
+                          <DelegateInArgument x:TypeArguments="s:Exception" Name="typeException" />
+                        </ActivityAction.Argument>
+                        <Sequence DisplayName="Handle TypeInto Failure">
+                          <Assign DisplayName="Record Type Error">
+                            <Assign.To><OutArgument x:TypeArguments="x:String">[var_ErrorMessage]</OutArgument></Assign.To>
+                            <Assign.Value><InArgument x:TypeArguments="x:String">[String.Format("TypeInto failed on input field — {0}", typeException.Message)]</InArgument></Assign.Value>
+                          </Assign>
+                          <Throw DisplayName="Rethrow Type Error" Exception="[typeException]" />
+                        </Sequence>
+                      </ActivityAction>
+                    </Catch>
+                  </TryCatch.Catches>
+                </TryCatch>
+
+                <!-- STEP 5: Execute test step — Assert element exists -->
+                <TryCatch DisplayName="Test Step: Assert Element Exists">
+                  <TryCatch.Try>
+                    <ua:ElementExists DisplayName="Assert Result Element Exists"
+                      TimeoutMS="[var_TimeoutSeconds * 1000]"
+                      xmlns:ua="http://schemas.uipath.com/workflow/activities/uiautomation">
+                      <ua:ElementExists.Target>
+                        <ua:Target>
+                          <ua:Target.Selector>
+                            <ua:Selector Text="&lt;html /&gt;&lt;webctrl tag='div' data-testid='result-container' /&gt;" />
+                          </ua:Target.Selector>
+                        </ua:Target>
+                      </ua:ElementExists.Target>
+                      <ua:ElementExists.Result>
+                        <OutArgument x:TypeArguments="x:Boolean">[var_TestPassed]</OutArgument>
+                      </ua:ElementExists.Result>
+                    </ua:ElementExists>
+                  </TryCatch.Try>
+                  <TryCatch.Catches>
+                    <Catch x:TypeArguments="s:Exception" xmlns:s="clr-namespace:System;assembly=mscorlib">
+                      <ActivityAction x:TypeArguments="s:Exception">
+                        <ActivityAction.Argument>
+                          <DelegateInArgument x:TypeArguments="s:Exception" Name="assertException" />
+                        </ActivityAction.Argument>
+                        <Sequence DisplayName="Handle Assert Failure">
+                          <Assign DisplayName="Record Assert Error">
+                            <Assign.To><OutArgument x:TypeArguments="x:String">[var_ErrorMessage]</OutArgument></Assign.To>
+                            <Assign.Value><InArgument x:TypeArguments="x:String">[String.Format("Element assertion failed — {0}", assertException.Message)]</InArgument></Assign.Value>
+                          </Assign>
+                          <Assign DisplayName="Mark Test Failed">
+                            <Assign.To><OutArgument x:TypeArguments="x:Boolean">[var_TestPassed]</OutArgument></Assign.To>
+                            <Assign.Value><InArgument x:TypeArguments="x:Boolean">[False]</InArgument></Assign.Value>
+                          </Assign>
+                        </Sequence>
+                      </ActivityAction>
+                    </Catch>
+                  </TryCatch.Catches>
+                </TryCatch>
+
+                <!-- STEP 6: Capture DOM snapshot (always, for diagnostics) -->
+                <ua:GetFullText DisplayName="Get Page Source (DOM Snapshot)"
+                  xmlns:ua="http://schemas.uipath.com/workflow/activities/uiautomation">
+                  <ua:GetFullText.Target>
+                    <ua:Target>
+                      <ua:Target.Selector>
+                        <ua:Selector Text="&lt;html /&gt;&lt;webctrl tag='html' /&gt;" />
+                      </ua:Target.Selector>
+                    </ua:Target>
+                  </ua:GetFullText.Target>
+                  <ua:GetFullText.Value>
+                    <OutArgument x:TypeArguments="x:String">[var_DOMSnapshot]</OutArgument>
+                  </ua:GetFullText.Value>
+                </ua:GetFullText>
+
+              </Sequence>
+            </ua:OpenBrowser.Body>
+          </ua:OpenBrowser>
+
+        </Sequence>
+      </TryCatch.Try>
+
+      <TryCatch.Catches>
+        <Catch x:TypeArguments="s:Exception" xmlns:s="clr-namespace:System;assembly=mscorlib">
+          <ActivityAction x:TypeArguments="s:Exception">
+            <ActivityAction.Argument>
+              <DelegateInArgument x:TypeArguments="s:Exception" Name="testException" />
+            </ActivityAction.Argument>
+            <Sequence DisplayName="Handle Test Execution Exception">
+              <Assign DisplayName="Set Test Failed">
+                <Assign.To><OutArgument x:TypeArguments="x:Boolean">[var_TestPassed]</OutArgument></Assign.To>
+                <Assign.Value><InArgument x:TypeArguments="x:Boolean">[False]</InArgument></Assign.Value>
+              </Assign>
+              <If DisplayName="Set Error Message If Empty" Condition="[String.IsNullOrEmpty(var_ErrorMessage)]">
+                <If.Then>
+                  <Assign DisplayName="Capture Exception Message">
+                    <Assign.To><OutArgument x:TypeArguments="x:String">[var_ErrorMessage]</OutArgument></Assign.To>
+                    <Assign.Value><InArgument x:TypeArguments="x:String">[testException.Message]</InArgument></Assign.Value>
+                  </Assign>
+                </If.Then>
+              </If>
+              <ui:LogMessage DisplayName="Log Test Exception" Level="Error"
+                Message="[String.Format(&quot;RunTest exception — TC: {0}, Error: {1}&quot;, var_TestCaseId, var_ErrorMessage)]" />
+            </Sequence>
+          </ActivityAction>
+        </Catch>
+      </TryCatch.Catches>
+    </TryCatch>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- Set output arguments -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <Assign DisplayName="Output TestPassed">
+      <Assign.To><OutArgument x:TypeArguments="x:Boolean">[out_TestPassed]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:Boolean">[var_TestPassed]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Output ErrorMessage">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[out_ErrorMessage]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[var_ErrorMessage]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Output DOMSnapshot">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[out_DOMSnapshot]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[var_DOMSnapshot]</InArgument></Assign.Value>
+    </Assign>
+
+    <ui:LogMessage DisplayName="Log RunTest End" Level="Info"
+      Message="[String.Format(&quot;RunTest completed — TC: {0}, Passed: {1}&quot;, var_TestCaseId, var_TestPassed)]" />
+
+  </Sequence>
+</Activity>

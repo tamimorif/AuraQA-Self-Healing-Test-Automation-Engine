@@ -1,0 +1,76 @@
+### infrastructure/docker-compose.yml
+# ──────────────────────────────────────────────────────────────
+# AuraQA — Full-Stack Docker Compose
+# ──────────────────────────────────────────────────────────────
+
+services:
+  # ── Backend (FastAPI) ──────────────────────────────────────
+  backend:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile
+    container_name: auraqa-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.example
+    environment:
+      - AURAQA_APP_ENV=development
+      - AURAQA_DEBUG=true
+      - AURAQA_LOG_LEVEL=DEBUG
+      - AURAQA_MOCK_APP_URL=http://mockapp:5173
+    volumes:
+      - ../backend:/app/backend:ro
+    networks:
+      - auraqa-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://127.0.0.1:8000/health').raise_for_status()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Mock App (React via nginx) ─────────────────────────────
+  mockapp:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile.mockapp
+    container_name: auraqa-mockapp
+    ports:
+      - "5173:5173"
+    networks:
+      - auraqa-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:5173"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ── Nginx Reverse Proxy ────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: auraqa-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      mockapp:
+        condition: service_healthy
+    networks:
+      - auraqa-net
+    restart: unless-stopped
+
+networks:
+  auraqa-net:
+    driver: bridge
+    name: auraqa-network
+
+volumes:
+  backend-data:
+    name: auraqa-backend-data

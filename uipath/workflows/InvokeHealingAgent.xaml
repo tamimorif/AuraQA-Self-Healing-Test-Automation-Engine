@@ -1,0 +1,204 @@
+<!-- /// uipath/workflows/InvokeHealingAgent.xaml — Call Python Healing API -->
+<Activity mc:Ignorable="sap sap2010 sads" x:Class="AuraQA.InvokeHealingAgent"
+  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation"
+  xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation"
+  xmlns:sads="http://schemas.microsoft.com/netfx/2010/xaml/activities/debugger"
+  xmlns:scg="clr-namespace:System.Collections.Generic;assembly=mscorlib"
+  xmlns:ui="http://schemas.uipath.com/workflow/activities"
+  xmlns:wa="http://schemas.uipath.com/workflow/activities/webapi"
+  xmlns:nj="clr-namespace:Newtonsoft.Json.Linq;assembly=Newtonsoft.Json"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- Arguments -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <x:Members>
+    <x:Property Name="in_FailurePayloadJson" Type="InArgument(x:String)" />
+    <x:Property Name="in_ApiEndpoint" Type="InArgument(x:String)" />
+    <x:Property Name="out_HealedSelectorJson" Type="OutArgument(x:String)" />
+    <x:Property Name="out_HealingStatus" Type="OutArgument(x:String)" />
+    <x:Property Name="out_Confidence" Type="OutArgument(x:Double)" />
+  </x:Members>
+
+  <Sequence DisplayName="InvokeHealingAgent Sequence" sap2010:WorkflowViewState.IdRef="InvokeHealingAgentSequence_1">
+
+    <Sequence.Variables>
+      <Variable x:TypeArguments="x:String" Name="var_FailurePayloadJson" />
+      <Variable x:TypeArguments="x:String" Name="var_ApiEndpoint" />
+      <Variable x:TypeArguments="x:String" Name="var_HealEndpointUrl" />
+      <Variable x:TypeArguments="x:String" Name="var_ResponseBody" Default="" />
+      <Variable x:TypeArguments="x:Int32" Name="var_HttpStatusCode" Default="0" />
+      <Variable x:TypeArguments="x:String" Name="var_HealedSelectorJson" Default="" />
+      <Variable x:TypeArguments="x:String" Name="var_HealingStatus" Default="failed" />
+      <Variable x:TypeArguments="x:Double" Name="var_Confidence" Default="0" />
+      <Variable x:TypeArguments="x:String" Name="var_ResponseHeaders" Default="" />
+      <Variable x:TypeArguments="x:Int32" Name="var_RetryCount" Default="0" />
+      <Variable x:TypeArguments="x:Int32" Name="var_MaxRetries" Default="3" />
+      <Variable x:TypeArguments="nj:JObject" Name="var_ResponseJson" />
+    </Sequence.Variables>
+
+    <!-- Initialize from arguments -->
+    <Assign DisplayName="Set FailurePayloadJson">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_FailurePayloadJson]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_FailurePayloadJson]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Set ApiEndpoint">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_ApiEndpoint]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[in_ApiEndpoint]</InArgument></Assign.Value>
+    </Assign>
+
+    <!-- Build the full /heal URL -->
+    <Assign DisplayName="Build Heal Endpoint URL">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[var_HealEndpointUrl]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[var_ApiEndpoint.TrimEnd("/"c) + "/heal"]</InArgument></Assign.Value>
+    </Assign>
+
+    <ui:LogMessage DisplayName="Log API Call Start" Level="Info"
+      Message="[String.Format(&quot;InvokeHealingAgent — Calling POST {0}&quot;, var_HealEndpointUrl)]" />
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- Retry loop for API call -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <DoWhile DisplayName="Retry Loop for Healing API"
+      Condition="[var_HttpStatusCode &lt;&gt; 200 AndAlso var_RetryCount &lt; var_MaxRetries]">
+      <Sequence DisplayName="API Call Attempt">
+
+        <!-- Increment retry counter -->
+        <Assign DisplayName="Increment Retry Count">
+          <Assign.To><OutArgument x:TypeArguments="x:Int32">[var_RetryCount]</OutArgument></Assign.To>
+          <Assign.Value><InArgument x:TypeArguments="x:Int32">[var_RetryCount + 1]</InArgument></Assign.Value>
+        </Assign>
+
+        <ui:LogMessage DisplayName="Log Attempt" Level="Info"
+          Message="[String.Format(&quot;API call attempt {0} of {1}&quot;, var_RetryCount, var_MaxRetries)]" />
+
+        <!-- ──────────────────────────────────────────────── -->
+        <!-- HTTP POST Request to /heal -->
+        <!-- ──────────────────────────────────────────────── -->
+        <TryCatch DisplayName="HTTP Request Try-Catch">
+          <TryCatch.Try>
+            <wa:HttpClient DisplayName="POST /heal"
+              Method="POST"
+              EndPoint="[var_HealEndpointUrl]"
+              BodyFormat="application/json"
+              Body="[var_FailurePayloadJson]"
+              AcceptFormat="application/json"
+              TimeoutMS="120000"
+              xmlns:wa="http://schemas.uipath.com/workflow/activities/webapi">
+              <wa:HttpClient.Headers>
+                <scg:Dictionary x:TypeArguments="x:String, x:String">
+                  <x:String x:Key="Content-Type">application/json</x:String>
+                  <x:String x:Key="Accept">application/json</x:String>
+                  <x:String x:Key="X-AuraQA-Source">uipath-workflow</x:String>
+                </scg:Dictionary>
+              </wa:HttpClient.Headers>
+              <wa:HttpClient.Result>
+                <OutArgument x:TypeArguments="x:String">[var_ResponseBody]</OutArgument>
+              </wa:HttpClient.Result>
+              <wa:HttpClient.StatusCode>
+                <OutArgument x:TypeArguments="x:Int32">[var_HttpStatusCode]</OutArgument>
+              </wa:HttpClient.StatusCode>
+              <wa:HttpClient.ResponseHeaders>
+                <OutArgument x:TypeArguments="x:String">[var_ResponseHeaders]</OutArgument>
+              </wa:HttpClient.ResponseHeaders>
+            </wa:HttpClient>
+          </TryCatch.Try>
+          <TryCatch.Catches>
+            <Catch x:TypeArguments="s:Exception" xmlns:s="clr-namespace:System;assembly=mscorlib">
+              <ActivityAction x:TypeArguments="s:Exception">
+                <ActivityAction.Argument>
+                  <DelegateInArgument x:TypeArguments="s:Exception" Name="httpException" />
+                </ActivityAction.Argument>
+                <Sequence DisplayName="Handle HTTP Exception">
+                  <Assign DisplayName="Set Error Status Code">
+                    <Assign.To><OutArgument x:TypeArguments="x:Int32">[var_HttpStatusCode]</OutArgument></Assign.To>
+                    <Assign.Value><InArgument x:TypeArguments="x:Int32">[0]</InArgument></Assign.Value>
+                  </Assign>
+                  <ui:LogMessage DisplayName="Log HTTP Error" Level="Error"
+                    Message="[String.Format(&quot;HTTP request failed (attempt {0}) — {1}&quot;, var_RetryCount, httpException.Message)]" />
+                  <!-- Exponential backoff delay before retry -->
+                  <Delay DisplayName="Retry Backoff Delay"
+                    Duration="[TimeSpan.FromSeconds(Math.Pow(2, var_RetryCount))]" />
+                </Sequence>
+              </ActivityAction>
+            </Catch>
+          </TryCatch.Catches>
+        </TryCatch>
+
+      </Sequence>
+    </DoWhile>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- Parse response JSON (per healed_response.json schema) -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <If DisplayName="Check HTTP Success" Condition="[var_HttpStatusCode = 200 AndAlso Not String.IsNullOrEmpty(var_ResponseBody)]">
+      <If.Then>
+        <Sequence DisplayName="Parse Successful Response">
+
+          <Assign DisplayName="Parse Response JSON">
+            <Assign.To><OutArgument x:TypeArguments="nj:JObject">[var_ResponseJson]</OutArgument></Assign.To>
+            <Assign.Value><InArgument x:TypeArguments="nj:JObject">[nj:JObject.Parse(var_ResponseBody)]</InArgument></Assign.Value>
+          </Assign>
+
+          <!-- Extract healed_selector -->
+          <Assign DisplayName="Extract HealedSelectorJson">
+            <Assign.To><OutArgument x:TypeArguments="x:String">[var_HealedSelectorJson]</OutArgument></Assign.To>
+            <Assign.Value><InArgument x:TypeArguments="x:String">[var_ResponseJson.SelectToken("healed_selector").ToString()]</InArgument></Assign.Value>
+          </Assign>
+
+          <!-- Extract status -->
+          <Assign DisplayName="Extract HealingStatus">
+            <Assign.To><OutArgument x:TypeArguments="x:String">[var_HealingStatus]</OutArgument></Assign.To>
+            <Assign.Value><InArgument x:TypeArguments="x:String">[var_ResponseJson.SelectToken("status").ToString()]</InArgument></Assign.Value>
+          </Assign>
+
+          <!-- Extract confidence -->
+          <Assign DisplayName="Extract Confidence">
+            <Assign.To><OutArgument x:TypeArguments="x:Double">[var_Confidence]</OutArgument></Assign.To>
+            <Assign.Value><InArgument x:TypeArguments="x:Double">[CDbl(var_ResponseJson.SelectToken("confidence"))]</InArgument></Assign.Value>
+          </Assign>
+
+          <ui:LogMessage DisplayName="Log Parsed Response" Level="Info"
+            Message="[String.Format(&quot;Healing response parsed — Status: {0}, Confidence: {1:F1}%, Selector: {2}&quot;, var_HealingStatus, var_Confidence, var_HealedSelectorJson)]" />
+
+        </Sequence>
+      </If.Then>
+      <If.Else>
+        <Sequence DisplayName="Handle API Failure">
+          <Assign DisplayName="Set Failed Status">
+            <Assign.To><OutArgument x:TypeArguments="x:String">[var_HealingStatus]</OutArgument></Assign.To>
+            <Assign.Value><InArgument x:TypeArguments="x:String">failed</InArgument></Assign.Value>
+          </Assign>
+          <Assign DisplayName="Set Zero Confidence">
+            <Assign.To><OutArgument x:TypeArguments="x:Double">[var_Confidence]</OutArgument></Assign.To>
+            <Assign.Value><InArgument x:TypeArguments="x:Double">[0]</InArgument></Assign.Value>
+          </Assign>
+          <ui:LogMessage DisplayName="Log API Failure" Level="Error"
+            Message="[String.Format(&quot;Healing API failed after {0} attempts — HTTP {1}&quot;, var_RetryCount, var_HttpStatusCode)]" />
+        </Sequence>
+      </If.Else>
+    </If>
+
+    <!-- ════════════════════════════════════════════════════════ -->
+    <!-- Set output arguments -->
+    <!-- ════════════════════════════════════════════════════════ -->
+    <Assign DisplayName="Output HealedSelectorJson">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[out_HealedSelectorJson]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[var_HealedSelectorJson]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Output HealingStatus">
+      <Assign.To><OutArgument x:TypeArguments="x:String">[out_HealingStatus]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:String">[var_HealingStatus]</InArgument></Assign.Value>
+    </Assign>
+    <Assign DisplayName="Output Confidence">
+      <Assign.To><OutArgument x:TypeArguments="x:Double">[out_Confidence]</OutArgument></Assign.To>
+      <Assign.Value><InArgument x:TypeArguments="x:Double">[var_Confidence]</InArgument></Assign.Value>
+    </Assign>
+
+    <ui:LogMessage DisplayName="Log InvokeHealingAgent End" Level="Info"
+      Message="InvokeHealingAgent workflow completed." />
+
+  </Sequence>
+</Activity>
